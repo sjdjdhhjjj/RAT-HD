@@ -991,14 +991,43 @@ void main() {{
             self.loader_status.config(text=f"编译错误: {str(e)[:50]}")
             messagebox.showerror("错误", f"编译失败：{e}")
     # =========================================
-
-# ================== 启动 ==================
 if __name__ == "__main__":
+    # 1. 检查依赖
+    import sys
     try:
         import PIL, pynput, pyaudio, win32clipboard, cv2, requests
     except ImportError as e:
         print("缺少依赖，请安装：")
         print("pip install pillow pynput pyaudio pywin32 opencv-python requests")
-    root = tk.Tk()
-    app = ChimeraSuper(root)
-    root.mainloop()
+        sys.exit(1)
+
+    # 2. 单实例锁（Windows 用 msvcrt，Linux/Mac 用 fcntl）
+    import os, sys
+    lock_file = os.path.join(os.path.dirname(__file__), "chimera.lock")
+    try:
+        # Windows 兼容锁
+        import msvcrt
+        f = open(lock_file, 'w')
+        try:
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        except:
+            print("另一个主控端已在运行，退出。")
+            sys.exit(0)
+    except ImportError:
+        # Linux/Mac 用 fcntl
+        import fcntl
+        f = open(lock_file, 'w')
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except:
+            print("另一个主控端已在运行，退出。")
+            sys.exit(0)
+
+    try:
+        root = tk.Tk()
+        app = ChimeraSuper(root)
+        root.mainloop()
+    finally:
+        os.remove(lock_file)
+
+# ================== 启动 ==================
