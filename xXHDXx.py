@@ -481,35 +481,37 @@ class ChimeraSuper:
         try: port = int(port)
         except: messagebox.showerror("错误", "端口必须为数字"); return
         
+        # 1. 写入客户端代码文件
         code = CLIENT_TCP_TEMPLATE % (ip, port)
-        with open("client.py", "w", encoding="utf-8") as f: f.write(code)
-        self.log("正在通过 PyInstaller 打包生成 client.exe ...")
+        with open("client.py", "w", encoding="utf-8") as f: 
+            f.write(code)
+            
+        self.log("正在打包 client.exe ...")
+        
+        # 2. 改用 PyInstaller 库内部接口直接调用，避免 9009 环境变量错误
         try:
-            subprocess.run([sys.executable, "-m", "PyInstaller", "--onefile", "--noconsole", "--name", "client", "client.py"],
-                           check=True, capture_output=True, text=True)
+            import PyInstaller.__main__
+            
+            # 执行打包参数：单文件、无黑窗口、命名为 client
+            PyInstaller.__main__.run([
+                'client.py',
+                '--onefile',
+                '--noconsole',
+                '--name',
+                'client'
+            ])
+            
+            # 3. 检查生成结果并自动移动到同级目录
             if os.path.exists("dist/client.exe"):
+                if os.path.exists("client.exe"):
+                    os.remove("client.exe")
                 os.replace("dist/client.exe", "client.exe")
-                self.log("client.exe 编译成功！")
+                self.log("client.exe 生成成功！")
                 messagebox.showinfo("成功", "client.exe 已在当前目录下生成")
             else:
-                messagebox.showerror("失败", "打包未找到输出文件")
+                messagebox.showerror("失败", "打包未生成目标文件，请确认已安装 pyinstaller")
         except Exception as e:
-            messagebox.showerror("错误", str(e))
-
-    # ---- 网络监听与通信线程 ----
-    def start_listen(self):
-        if self.running: return
-        try:
-            port = int(self.port_entry.get())
-            self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server.bind(("0.0.0.0", port))
-            self.server.listen(5)
-            self.running = True
-            self.status_label.config(text="● 监听中", fg="green")
-            self.log(f"服务已启动，正在监听端口 {port}")
-            threading.Thread(target=self.accept_clients, daemon=True).start()
-        except Exception as e:
-            messagebox.showerror("错误", str(e))
+            messagebox.showerror("错误", f"打包出错: {e}")
 
     def stop_listen(self):
         self.running = False
